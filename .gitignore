@@ -1,0 +1,58 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.manifest
+*.spec
+
+# ---- Virtualenv ----
+.env
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ---- Django ----
+*.log
+db.sqlite3
+media/
+staticfiles/
+local_settings.py
+
+# ---- Jupyter ----
+.ipynb_checkpoints
+*.ipynb
+
+# ---- VSCode / PyCharm ----
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ---- React / Node ----
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+coverage/
+.cache/
+*.tsbuildinfo
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- Other ----
+*.bak
+*.swp
+*.tmp
