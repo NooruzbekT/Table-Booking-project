@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Table Booking — шаблон</title>
+  <style>
+    :root { --bg:#0b0c10; --card:#15171c; --muted:#a0a4ae; --text:#e8ebf1; --accent:#6ad1ff; --accent-2:#9bffb5; }
+    * { box-sizing: border-box }
+    html, body { height:100% }
+    body { margin:0; background:linear-gradient(180deg, #0b0c10, #0d1117); color:var(--text); font:14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial }
+    a { color:var(--accent); text-decoration:none }
+    a:hover { text-decoration:underline }
+
+    .container { max-width:960px; margin:0 auto; padding:24px }
+    header { display:flex; gap:16px; align-items:center; justify-content:space-between; margin-bottom:20px }
+    nav { display:flex; gap:12px; align-items:center }
+    nav a { padding:8px 10px; border-radius:10px }
+    nav a.active { background:rgba(255,255,255,.06) }
+
+    .card { background:var(--card); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:20px; box-shadow:0 10px 30px rgba(0,0,0,.25) }
+    .grid { display:grid; gap:12px }
+    .grid.cols-2 { grid-template-columns: repeat(2, 1fr) }
+
+    input, select, button { background:#0f1218; color:var(--text); border:1px solid rgba(255,255,255,.12); padding:10px 12px; border-radius:12px; outline:none }
+    input:focus, select:focus { border-color:var(--accent) }
+    button { cursor:pointer; font-weight:600 }
+    .btn { background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#001018; border:none }
+    .muted { color:var(--muted) }
+    .row { display:flex; gap:8px; align-items:center }
+    .right { margin-left:auto }
+    .tag { font-size:12px; background:rgba(255,255,255,.08); padding:4px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.1) }
+    ul.clean { list-style:none; margin:0; padding:0 }
+    hr.sep { border:0; height:1px; background:linear-gradient(90deg, transparent, rgba(255,255,255,.2), transparent); margin:16px 0 }
+    .hidden { display:none }
+
+    /* Утилиты центрирования */
+    .mx-auto { margin-left:auto; margin-right:auto; }
+    .text-center { text-align:center; }
+    .narrow { max-width:560px; }
+    .narrow-sm { max-width:420px; }
+
+    /* (опционально) Полное вертикальное центрирование всей страницы:
+    body { min-height:100vh; display:flex; }
+    .container { margin:auto; padding:24px; }
+    */
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="row" style="gap:16px">
+        <strong>🍽️ Table Booking</strong>
+        <nav id="nav"></nav>
+      </div>
+      <div class="row" id="authBox">
+        <!-- динамически: приветствие + выход или ссылки Войти/Регистрация -->
+      </div>
+    </header>
+
+    <!-- FLASH -->
+    <div id="flash" class="hidden card" role="status"></div>
+
+    <!-- Вьюхи -->
+    <section id="view-reservations" class="hidden">
+      <div class="card grid">
+        <div class="row">
+          <h2 style="margin:0">Мои бронирования</h2>
+          <button class="btn right" data-route="new">+ Новое бронирование</button>
+        </div>
+        <div id="reservationsList" class="grid"></div>
+      </div>
+    </section>
+
+    <section id="view-new" class="hidden">
+      <form id="formNew" class="card grid narrow mx-auto">
+        <h2 style="margin:0" class="text-center">Новое бронирование</h2>
+        <label class="grid">Столик
+          <input name="table" placeholder="ID столика (временно вручную)" required />
+        </label>
+        <div class="grid cols-2">
+          <label class="grid">Дата
+            <input type="date" name="date" required />
+          </label>
+          <label class="grid">Время
+            <input type="time" name="time" required />
+          </label>
+        </div>
+        <label class="grid">Длительность (мин)
+          <input type="number" name="duration" value="90" min="15" step="15" />
+        </label>
+        <div class="row">
+          <button class="btn" type="submit">Забронировать</button>
+          <button type="button" data-route="reservations">Отмена</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="view-login" class="hidden">
+      <form id="formLogin" class="card grid narrow-sm mx-auto">
+        <h2 style="margin:0" class="text-center">Вход</h2>
+        <input name="email" placeholder="Email" type="email" required />
+        <input name="password" placeholder="Пароль" type="password" required />
+        <button class="btn" type="submit">Войти</button>
+        <div class="muted text-center">Нет аккаунта? <a href="#" data-route="register">Зарегистрируйтесь</a></div>
+      </form>
+    </section>
+
+    <section id="view-register" class="hidden">
+      <form id="formRegister" class="card grid narrow mx-auto">
+        <h2 style="margin:0" class="text-center">Регистрация</h2>
+        <div class="grid cols-2">
+          <input name="first_name" placeholder="Имя" required />
+          <input name="last_name" placeholder="Фамилия" required />
+        </div>
+        <input name="email" placeholder="Email" type="email" required />
+        <input name="phone" placeholder="Телефон" required />
+        <div class="grid cols-2">
+          <input name="password" placeholder="Пароль" type="password" required />
+          <input name="confirm_password" placeholder="Повтор пароля" type="password" required />
+        </div>
+        <button class="btn" type="submit">Создать аккаунт</button>
+      </form>
+    </section>
+
+    <footer class="muted text-center" style="margin-top:28px">
+      Статичный шаблон. API пока эмулируется на клиента. Позже подключим к Django.
+    </footer>
+  </div>
+
+  <script>
+  const $ = (sel, root=document) => root.querySelector(sel)
+  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel))
+
+  const state = {
+    route: 'reservations',
+    token: null,
+    user: null,
+    reservations: [],
+  }
+
+  // Навигация
+  const routes = [
+    { id:'reservations', title:'Бронирования' },
+    { id:'new', title:'Новое' },
+  ]
+
+  function renderNav() {
+    const nav = $('#nav');
+    nav.innerHTML = routes.map(r => `<a href="#" data-route="${r.id}" class="${state.route===r.id?'active':''}">${r.title}</a>`).join('')
+  }
+
+  function renderAuthBox() {
+    const box = $('#authBox')
+    if (state.user) {
+      box.innerHTML = `<span class="muted">👋 ${state.user.email}</span><button id="btnLogout">Выйти</button>`
+      $('#btnLogout').onclick = () => { state.token = null; state.user = null; saveAuth(); go('login') }
+    } else {
+      box.innerHTML = `<a href="#" data-route="login">Войти</a> <span class="muted">|</span> <a href="#" data-route="register">Регистрация</a>`
+    }
+  }
+
+  function showFlash(text, ok=true) {
+    const box = $('#flash');
+    if (!text) { box.classList.add('hidden'); box.textContent=''; return }
+    box.textContent = text
+    box.style.borderColor = ok ? 'rgba(155,255,181,.6)' : 'rgba(255,120,120,.5)'
+    box.classList.remove('hidden')
+    setTimeout(()=>box.classList.add('hidden'), 2200)
+  }
+
+  function saveAuth() {
+    localStorage.setItem('tb_token', state.token || '')
+    localStorage.setItem('tb_user', JSON.stringify(state.user || null))
+  }
+  function loadAuth() {
+    state.token = localStorage.getItem('tb_token') || null
+    try { state.user = JSON.parse(localStorage.getItem('tb_user')) } catch { state.user = null }
+  }
+
+  // ==== Mock API (можем заменить на реальный позже) ====
+  const MockAPI = {
+    async login({email, password}) {
+      await delay(300)
+      if (!email || !password) throw new Error('Неверные данные')
+      return { access: 'demo-token', user: { email } }
+    },
+    async register(payload) {
+      await delay(400)
+      if (payload.password !== payload.confirm_password) throw new Error('Пароли не совпадают')
+      return { message: 'Учётная запись создана. Проверьте почту.' }
+    },
+    async listReservations() {
+      await delay(250)
+      return [
+        { id:1, table:3, date:'2025-10-02', time:'18:00', duration:90, status:'confirmed' },
+        { id:2, table:5, date:'2025-10-03', time:'20:30', duration:120, status:'pending' },
+      ]
+    },
+    async createReservation(payload) {
+      await delay(350)
+      const id = Math.floor(Math.random()*10000)
+      return { id, ...payload, status:'pending' }
+    }
+  }
+
+  function delay(ms) { return new Promise(r => setTimeout(r, ms)) }
+
+  // === Рендеры вьюх ===
+  function renderReservations() {
+    const root = $('#reservationsList')
+    if (!state.reservations.length) {
+      root.innerHTML = '<div class="muted">Пока нет бронирований.</div>'
+      return
+    }
+    root.innerHTML = state.reservations.map(r => `
+      <div class="card row" style="justify-content:space-between; align-items:center">
+        <div>
+          <div><strong>Стол ${r.table}</strong> · ${r.date} ${r.time} · ${r.duration} мин</div>
+          <div class="muted">ID: ${r.id}</div>
+        </div>
+        <span class="tag">${r.status}</span>
+      </div>
+    `).join('')
+  }
+
+  function bindForms() {
+    // login
+    const fLogin = $('#formLogin')
+    if (fLogin) fLogin.onsubmit = async (e) => {
+      e.preventDefault()
+      try {
+        const data = await MockAPI.login(Object.fromEntries(new FormData(fLogin)))
+        state.token = data.access
+        state.user = data.user
+        saveAuth()
+        showFlash('Добро пожаловать!')
+        go('reservations')
+        await loadReservations()
+      } catch (err) {
+        showFlash(err.message || 'Ошибка входа', false)
+      }
+    }
+
+    // register
+    const fReg = $('#formRegister')
+    if (fReg) fReg.onsubmit = async (e) => {
+      e.preventDefault()
+      try {
+        const payload = Object.fromEntries(new FormData(fReg))
+        await MockAPI.register(payload)
+        showFlash('Аккаунт создан, войдите')
+        go('login')
+      } catch (err) {
+        showFlash(err.message || 'Ошибка регистрации', false)
+      }
+    }
+
+    // new reservation
+    const fNew = $('#formNew')
+    if (fNew) fNew.onsubmit = async (e) => {
+      e.preventDefault()
+      try {
+        const payload = Object.fromEntries(new FormData(fNew))
+        payload.duration = Number(payload.duration || 90)
+        const created = await MockAPI.createReservation(payload)
+        state.reservations = [created, ...state.reservations]
+        showFlash('Бронирование создано')
+        go('reservations')
+        renderReservations()
+      } catch (err) {
+        showFlash(err.message || 'Ошибка создания', false)
+      }
+    }
+  }
+
+  async function loadReservations() {
+    try {
+      state.reservations = await MockAPI.listReservations()
+      renderReservations()
+    } catch (err) {
+      showFlash('Не удалось загрузить список', false)
+    }
+  }
+
+  // === Роутинг (очень простой) ===
+  function go(route) {
+    state.route = route
+    renderNav()
+
+    const views = ['reservations','new','login','register']
+    views.forEach(v => {
+      const el = $('#view-'+v)
+      if (!el) return
+      if (v === route) el.classList.remove('hidden'); else el.classList.add('hidden')
+    })
+
+    if (!state.user && (route==='reservations'||route==='new')) {
+      $('#view-login').classList.remove('hidden')
+      $('#view-'+route).classList.add('hidden')
+    }
+    renderAuthBox()
+  }
+
+  // Делегирование кликов по ссылкам/кнопкам с data-route
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-route]')
+    if (!a) return
+    e.preventDefault()
+    go(a.getAttribute('data-route'))
+  })
+
+  // Инициализация
+  ;(async function init(){
+    loadAuth()
+    renderNav()
+    renderAuthBox()
+    bindForms()
+
+    if (state.user) {
+      go('reservations')
+      await loadReservations()
+    } else {
+      go('login')
+    }
+  })()
+  </script>
+</body>
+</html>
