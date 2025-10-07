@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework.decorators import action
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAdminUser
@@ -7,7 +8,7 @@ from .models import Table
 import reservation.models
 from .serializers import TableSerializer
 from .filters import TableFilter
-
+@extend_schema(tags=['Tables'])
 class TableViewSet(viewsets.ModelViewSet):
     """
     API для управления столиками (только для администраторов).

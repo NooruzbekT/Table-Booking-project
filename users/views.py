@@ -1,33 +1,57 @@
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action
 import uuid
 from .models import User
-from .serializers import UserSerializer, UserRegistrationSerializer, UserLoginSerializer, ResetPasswordSerializer
+from .serializers import UserSerializer, UserRegistrationSerializer, UserLoginSerializer, ResetPasswordSerializer, \
+    ForgotPasswordInputSerializer, MessageSerializer, TokenPairSerializer
 from .utils import send_verification_email, send_reset_password_email
 
-class UserViewSet(viewsets.ViewSet):
+
+@extend_schema(tags=['Users'])
+class UserViewSet(viewsets.GenericViewSet):
     """
     ViewSet для управления пользователями (регистрация, вход, восстановление пароля).
     """
 
+    serializer_action_classes = {
+        'register': UserRegistrationSerializer,
+        'login': UserLoginSerializer,
+        'me': UserSerializer,
+        'update_me': UserSerializer,
+        'reset_password': ResetPasswordSerializer,
+        'forgot_password': ForgotPasswordInputSerializer,
+    }
+
+    def get_serializer_class(self):
+        return self.serializer_action_classes.get(self.action, UserSerializer)
+
+    @extend_schema(
+        summary="Регистрация",
+        request=UserRegistrationSerializer,
+        responses={201: MessageSerializer}
+    )
     @action(detail=False, methods=["post"], permission_classes=[AllowAny])
     def register(self, request):
-        """Регистрация пользователя."""
-        serializer = UserRegistrationSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
             user.is_verified = False
-            user.verification_token = str(uuid.uuid4())  # Генерируем токен
+            user.verification_token = str(uuid.uuid4())
             user.save()
-            send_verification_email(user.email, user.verification_token)  # Отправляем email
-            return Response({"message": "На вашу почту отправлено письмо для подтверждения."})
+            send_verification_email(user.email, user.verification_token)
+            return Response({"message": "На вашу почту отправлено письмо для подтверждения."}, status=201)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(
+        summary="Подтверждение email",
+        parameters=[OpenApiParameter(name="token", location=OpenApiParameter.PATH, required=True, type=str)],
+        responses={200: MessageSerializer, 400: OpenApiResponse(description="Неверный токен")}
+    )
     @action(detail=False, methods=["get"], url_path="verify-email/(?P<token>[^/.]+)", permission_classes=[AllowAny])
     def verify_email(self, request, token=None):
-        """Подтверждение email."""
         try:
             user = User.objects.get(verification_token=token)
             user.is_verified = True
@@ -37,39 +61,51 @@ class UserViewSet(viewsets.ViewSet):
         except User.DoesNotExist:
             return Response({"error": "Неверный токен"}, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(
+        summary="Логин",
+        request=UserLoginSerializer,
+        responses={200: TokenPairSerializer, 400: OpenApiResponse(description="Ошибка аутентификации")}
+    )
     @action(detail=False, methods=["post"], permission_classes=[AllowAny])
     def login(self, request):
-        """Авторизация пользователя."""
-        serializer = UserLoginSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
-            return Response(serializer.validated_data, status=status.HTTP_200_OK)
+            # serializer.validate уже формирует dict с токенами
+            tokens = TokenPairSerializer(serializer.validated_data).data
+            return Response(tokens, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(summary="Текущий пользователь", responses=UserSerializer)
     @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
     def me(self, request):
-        """Получение информации о текущем пользователе."""
-        serializer = UserSerializer(request.user)
+        serializer = self.get_serializer(request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @extend_schema(summary="Обновить профиль", request=UserSerializer, responses=UserSerializer)
     @action(detail=False, methods=["patch"], permission_classes=[IsAuthenticated])
     def update_me(self, request):
-        """Редактирование данных пользователя."""
-        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        serializer = self.get_serializer(request.user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(summary="Удалить аккаунт", responses={204: OpenApiResponse(description="Аккаунт удален")})
     @action(detail=False, methods=["delete"], permission_classes=[IsAuthenticated])
     def delete_me(self, request):
-        """Удаление аккаунта."""
         request.user.delete()
         return Response({"message": "Аккаунт удален"}, status=status.HTTP_204_NO_CONTENT)
 
+    @extend_schema(
+        summary="Забыли пароль",
+        request=ForgotPasswordInputSerializer,
+        responses={200: MessageSerializer, 404: OpenApiResponse(description="Пользователь не найден")}
+    )
     @action(detail=False, methods=["post"], permission_classes=[AllowAny])
     def forgot_password(self, request):
-        """Отправка ссылки для сброса пароля."""
-        email = request.data.get("email")
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
         try:
             user = User.objects.get(email=email)
             user.reset_token = str(uuid.uuid4())
@@ -79,18 +115,24 @@ class UserViewSet(viewsets.ViewSet):
         except User.DoesNotExist:
             return Response({"error": "Пользователь с таким email не найден."}, status=status.HTTP_404_NOT_FOUND)
 
+    @extend_schema(
+        summary="Сброс пароля по токену",
+        request=ResetPasswordSerializer,
+        parameters=[OpenApiParameter(name="token", location=OpenApiParameter.PATH, required=True, type=str)],
+        responses={200: MessageSerializer, 400: OpenApiResponse(description="Неверный/устаревший токен")}
+    )
     @action(detail=False, methods=["post"], url_path="reset-password/(?P<token>[^/.]+)", permission_classes=[AllowAny])
     def reset_password(self, request, token=None):
-        """Сброс пароля по токену."""
         try:
             user = User.objects.get(reset_token=token)
         except User.DoesNotExist:
             return Response({"error": "Неверный или устаревший токен."}, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = ResetPasswordSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             user.set_password(serializer.validated_data["new_password"])
             user.reset_token = None
             user.save()
             return Response({"message": "Пароль успешно изменен."})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+

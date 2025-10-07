@@ -78,3 +78,14 @@ class ResetPasswordSerializer(serializers.Serializer):
         if len(value) < 6:
             raise serializers.ValidationError("Пароль должен содержать минимум 6 символов.")
         return value
+
+
+class TokenPairSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+    access = serializers.CharField()
+
+class MessageSerializer(serializers.Serializer):
+    message = serializers.CharField()
+
+class ForgotPasswordInputSerializer(serializers.Serializer):
+    email = serializers.EmailField()

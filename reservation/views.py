@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets, status
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
@@ -10,6 +11,8 @@ from .serializers import (
     ReservationCancelSerializer,
 )
 
+
+@extend_schema(tags=['Reservation'])
 class ReservationViewSet(viewsets.ModelViewSet):
     """ ViewSet для бронирований. """
     queryset = Reservation.objects.all()

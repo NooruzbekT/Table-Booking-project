@@ -12,7 +12,7 @@ def reservation_created(sender, instance, created, **kwargs):
     Отправляет email с подтверждением бронирования и запланированными напоминаниями.
     """
     if created:
-        confirm_link = f"{settings.SITE_URL}/api/reservation/reservations/confirm/{instance.confirmation_token}/"
+        confirm_link = f"{settings.SITE_URL}/api/reservation/confirm/{instance.confirmation_token}/"
 
         subject = "Подтвердите ваше бронирование"
         message = (
