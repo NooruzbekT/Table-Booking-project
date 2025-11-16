@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'rest_framework',
     'drf_spectacular',
     'users',
@@ -40,6 +41,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -132,6 +134,18 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "20/hour",  # Неавторизованные пользователи: 20 запросов в час
+        "user": "100/hour",  # Авторизованные пользователи: 100 запросов в час
+        "login": "5/hour",  # Для логина: 5 попыток в час
+        "register": "3/hour",  # Для регистрации: 3 попытки в час
+    },
 }
 
 
@@ -181,3 +195,28 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'Документация',
     'VERSION': '1.0.0',
 }
+
+# CORS настройки
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # React/Vue/Angular dev server
+    "http://localhost:8080",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:8080",
+]
+
+# В разработке можно разрешить все (для production использовать CORS_ALLOWED_ORIGINS)
+# CORS_ALLOW_ALL_ORIGINS = True  # Осторожно! Только для разработки
+
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]

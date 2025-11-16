@@ -20,6 +20,19 @@ class Reservation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
     confirmation_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
 
+    class Meta:
+        indexes = [
+            # Индекс для фильтрации по дате и статусу (частые запросы)
+            models.Index(fields=['date', 'status'], name='reservation_date_status_idx'),
+            # Индекс для фильтрации бронирований пользователя
+            models.Index(fields=['user', 'status'], name='reservation_user_status_idx'),
+            # Индекс для поиска бронирований столика на определенную дату
+            models.Index(fields=['table', 'date', 'status'], name='reservation_table_date_idx'),
+            # Индекс для сортировки по дате создания
+            models.Index(fields=['-created_at'], name='reservation_created_idx'),
+        ]
+        ordering = ['-created_at']
+
     def __str__(self):
         return f"Бронирование {self.table.number} для {self.user.email} на {self.date} {self.time}"
 

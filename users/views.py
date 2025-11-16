@@ -8,6 +8,7 @@ from .models import User
 from .serializers import UserSerializer, UserRegistrationSerializer, UserLoginSerializer, ResetPasswordSerializer, \
     ForgotPasswordInputSerializer, MessageSerializer, TokenPairSerializer
 from .utils import send_verification_email, send_reset_password_email
+from .throttling import LoginRateThrottle, RegisterRateThrottle
 
 
 @extend_schema(tags=['Users'])
@@ -33,7 +34,7 @@ class UserViewSet(viewsets.GenericViewSet):
         request=UserRegistrationSerializer,
         responses={201: MessageSerializer}
     )
-    @action(detail=False, methods=["post"], permission_classes=[AllowAny])
+    @action(detail=False, methods=["post"], permission_classes=[AllowAny], throttle_classes=[RegisterRateThrottle])
     def register(self, request):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
@@ -66,7 +67,7 @@ class UserViewSet(viewsets.GenericViewSet):
         request=UserLoginSerializer,
         responses={200: TokenPairSerializer, 400: OpenApiResponse(description="Ошибка аутентификации")}
     )
-    @action(detail=False, methods=["post"], permission_classes=[AllowAny])
+    @action(detail=False, methods=["post"], permission_classes=[AllowAny], throttle_classes=[LoginRateThrottle])
     def login(self, request):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():

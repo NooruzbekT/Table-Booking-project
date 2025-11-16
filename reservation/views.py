@@ -4,12 +4,14 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from django_filters.rest_framework import DjangoFilterBackend
 from .models import Reservation
 from .serializers import (
     ReservationCreateSerializer,
     ReservationUpdateSerializer,
     ReservationCancelSerializer,
 )
+from .filters import ReservationFilter
 
 
 @extend_schema(tags=['Reservation'])
@@ -17,10 +19,8 @@ class ReservationViewSet(viewsets.ModelViewSet):
     """ ViewSet для бронирований. """
     queryset = Reservation.objects.all()
     permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        """ Фильтруем бронирования по текущему пользователю. """
-        return Reservation.objects.filter(user=self.request.user)
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = ReservationFilter
 
     def get_serializer_class(self):
         """ Выбираем сериализатор в зависимости от действия. """

@@ -1,4 +1,5 @@
 from django.contrib.auth.hashers import make_password
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -6,12 +7,17 @@ from .models import User
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=6)
-    confirm_password = serializers.CharField(write_only=True, min_length=6)
+    password = serializers.CharField(write_only=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True, min_length=8)
 
     class Meta:
         model = User
         fields = ["first_name", "last_name", "email", "phone", "password", "confirm_password"]
+
+    def validate_password(self, value):
+        """Валидация пароля с использованием встроенных валидаторов Django"""
+        validate_password(value)
+        return value
 
     def validate(self, data):
         """Проверяем, совпадают ли пароли."""
@@ -55,12 +61,18 @@ class UserLoginSerializer(serializers.Serializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=False, min_length=6)
+    password = serializers.CharField(write_only=True, required=False, min_length=8)
 
     class Meta:
         model = User
         fields = ["id", "first_name", "last_name", "email", "phone", "is_verified", "password"]
         read_only_fields = ["id", "is_verified", "email"]
+
+    def validate_password(self, value):
+        """Валидация пароля с использованием встроенных валидаторов Django"""
+        if value:
+            validate_password(value)
+        return value
 
     def update(self, instance, validated_data):
         """Обновление профиля пользователя."""
@@ -71,12 +83,11 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class ResetPasswordSerializer(serializers.Serializer):
-    new_password = serializers.CharField(write_only=True, min_length=6)
+    new_password = serializers.CharField(write_only=True, min_length=8)
 
     def validate_new_password(self, value):
-        """Минимальная длина пароля 6 символов"""
-        if len(value) < 6:
-            raise serializers.ValidationError("Пароль должен содержать минимум 6 символов.")
+        """Валидация нового пароля с использованием встроенных валидаторов Django"""
+        validate_password(value)
         return value
 
 
