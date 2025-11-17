@@ -39,7 +39,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)  # Может ли пользователь войти
 
     verification_token = models.CharField(max_length=100, blank=True, null=True)
+    verification_token_expires_at = models.DateTimeField(blank=True, null=True)
     reset_token = models.CharField(max_length=100, blank=True, null=True)
+    reset_token_expires_at = models.DateTimeField(blank=True, null=True)
 
     objects = CustomUserManager()
 

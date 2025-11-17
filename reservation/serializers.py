@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from django.utils import timezone
 from rest_framework import serializers
 from .models import Reservation
 
@@ -81,7 +82,7 @@ class ReservationUpdateSerializer(serializers.ModelSerializer):
 
         # Проверяем, что бронирование еще не началось
         start_time = datetime.combine(instance.date, instance.time)
-        if datetime.now() >= start_time:
+        if timezone.now().replace(tzinfo=None) >= start_time:
             raise serializers.ValidationError("Нельзя изменить прошедшее бронирование.")
 
         # Проверяем доступность нового времени
@@ -117,9 +118,10 @@ class ReservationCancelSerializer(serializers.ModelSerializer):
 
         # Проверяем, что бронирование еще не началось и есть 30 минут до него
         start_time = datetime.combine(instance.date, instance.time)
-        if datetime.now() >= start_time:
+        now = timezone.now().replace(tzinfo=None)
+        if now >= start_time:
             raise serializers.ValidationError("Нельзя отменить прошедшее бронирование.")
-        if datetime.now() + timedelta(minutes=30) >= start_time:
+        if now + timedelta(minutes=30) >= start_time:
             raise serializers.ValidationError("Нельзя отменить бронирование менее чем за 30 минут до начала.")
 
         return data

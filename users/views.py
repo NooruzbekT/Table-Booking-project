@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action
 import uuid
+from datetime import timedelta
+from django.utils import timezone
 from .models import User
 from .serializers import UserSerializer, UserRegistrationSerializer, UserLoginSerializer, ResetPasswordSerializer, \
     ForgotPasswordInputSerializer, MessageSerializer, TokenPairSerializer
@@ -41,6 +43,7 @@ class UserViewSet(viewsets.GenericViewSet):
             user = serializer.save()
             user.is_verified = False
             user.verification_token = str(uuid.uuid4())
+            user.verification_token_expires_at = timezone.now() + timedelta(hours=24)
             user.save()
             send_verification_email(user.email, user.verification_token)
             return Response({"message": "На вашу почту отправлено письмо для подтверждения."}, status=201)
@@ -55,8 +58,15 @@ class UserViewSet(viewsets.GenericViewSet):
     def verify_email(self, request, token=None):
         try:
             user = User.objects.get(verification_token=token)
+
+            # Проверяем истечение токена
+            if user.verification_token_expires_at and timezone.now() > user.verification_token_expires_at:
+                return Response({"error": "Токен истек. Пожалуйста, зарегистрируйтесь снова."},
+                              status=status.HTTP_400_BAD_REQUEST)
+
             user.is_verified = True
             user.verification_token = None
+            user.verification_token_expires_at = None
             user.save()
             return Response({"message": "Email подтвержден!"})
         except User.DoesNotExist:
@@ -110,6 +120,7 @@ class UserViewSet(viewsets.GenericViewSet):
         try:
             user = User.objects.get(email=email)
             user.reset_token = str(uuid.uuid4())
+            user.reset_token_expires_at = timezone.now() + timedelta(hours=1)
             user.save()
             send_reset_password_email(user.email, user.reset_token)
             return Response({"message": "На почту отправлено письмо с инструкцией по сбросу пароля."})
@@ -129,10 +140,16 @@ class UserViewSet(viewsets.GenericViewSet):
         except User.DoesNotExist:
             return Response({"error": "Неверный или устаревший токен."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Проверяем истечение токена
+        if user.reset_token_expires_at and timezone.now() > user.reset_token_expires_at:
+            return Response({"error": "Токен истек. Пожалуйста, запросите сброс пароля снова."},
+                          status=status.HTTP_400_BAD_REQUEST)
+
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             user.set_password(serializer.validated_data["new_password"])
             user.reset_token = None
+            user.reset_token_expires_at = None
             user.save()
             return Response({"message": "Пароль успешно изменен."})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
