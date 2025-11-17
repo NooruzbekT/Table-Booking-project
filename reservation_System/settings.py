@@ -190,6 +190,18 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_ENABLE_UTC = False
 CELERY_TIMEZONE = "Asia/Almaty"
 
+# Celery мониторинг и производительность
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TASK_TRACK_STARTED = True  # Отслеживать когда задача началась
+CELERY_TASK_TIME_LIMIT = 30 * 60  # Жесткий лимит: 30 минут
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # Мягкий лимит: 25 минут
+CELERY_WORKER_SEND_TASK_EVENTS = True  # Отправлять события задач
+CELERY_TASK_SEND_SENT_EVENT = True  # Отправлять событие при отправке задачи
+
+# Настройки для мониторинга с Flower
+# Запуск: celery -A reservation_System flower --port=5555
+# URL: http://localhost:5555
+
 SPECTACULAR_SETTINGS = {
     'TITLE': 'API',
     'DESCRIPTION': 'Документация',

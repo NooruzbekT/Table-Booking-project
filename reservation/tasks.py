@@ -7,7 +7,10 @@ from smtplib import (
     SMTPException, SMTPServerDisconnected,
     SMTPDataError, SMTPSenderRefused, SMTPRecipientsRefused
 )
+import logging
 from .models import Reservation
+
+logger = logging.getLogger(__name__)
 
 
 TEMPORARY_SMTP_CODES = {421, 450, 451, 452, 454, 471, 472}
@@ -131,3 +134,21 @@ def auto_cancel_reservation(reservation_id: int):
             )
     except Reservation.DoesNotExist:
         return
+
+
+@shared_task
+def cleanup_old_reservations():
+    """
+    Периодическая задача для очистки старых бронирований.
+    Удаляет бронирования старше 30 дней.
+    """
+    cutoff_date = now().date() - timedelta(days=30)
+
+    old_reservations = Reservation.objects.filter(date__lt=cutoff_date)
+    count = old_reservations.count()
+
+    if count > 0:
+        old_reservations.delete()
+        logger.info(f"Cleanup task: deleted {count} old reservations (older than {cutoff_date})")
+    else:
+        logger.info(f"Cleanup task: no old reservations to delete (cutoff: {cutoff_date})")

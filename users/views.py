@@ -4,13 +4,16 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action
 import uuid
+import logging
 from datetime import timedelta
 from django.utils import timezone
 from .models import User
 from .serializers import UserSerializer, UserRegistrationSerializer, UserLoginSerializer, ResetPasswordSerializer, \
     ForgotPasswordInputSerializer, MessageSerializer, TokenPairSerializer
-from .utils import send_verification_email, send_reset_password_email
+from .tasks import send_verification_email, send_reset_password_email
 from .throttling import LoginRateThrottle, RegisterRateThrottle
+
+logger = logging.getLogger(__name__)
 
 
 @extend_schema(tags=['Users'])
@@ -46,7 +49,9 @@ class UserViewSet(viewsets.GenericViewSet):
             user.verification_token_expires_at = timezone.now() + timedelta(hours=24)
             user.save()
             send_verification_email(user.email, user.verification_token)
+            logger.info(f"User registered: {user.email} (ID: {user.id}). Verification email sent.")
             return Response({"message": "На вашу почту отправлено письмо для подтверждения."}, status=201)
+        logger.warning(f"Failed registration attempt: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @extend_schema(
@@ -61,6 +66,7 @@ class UserViewSet(viewsets.GenericViewSet):
 
             # Проверяем истечение токена
             if user.verification_token_expires_at and timezone.now() > user.verification_token_expires_at:
+                logger.warning(f"Expired verification token used for user: {user.email}")
                 return Response({"error": "Токен истек. Пожалуйста, зарегистрируйтесь снова."},
                               status=status.HTTP_400_BAD_REQUEST)
 
@@ -68,8 +74,10 @@ class UserViewSet(viewsets.GenericViewSet):
             user.verification_token = None
             user.verification_token_expires_at = None
             user.save()
+            logger.info(f"Email verified successfully for user: {user.email} (ID: {user.id})")
             return Response({"message": "Email подтвержден!"})
         except User.DoesNotExist:
+            logger.warning(f"Invalid verification token attempted: {token}")
             return Response({"error": "Неверный токен"}, status=status.HTTP_400_BAD_REQUEST)
 
     @extend_schema(
@@ -83,7 +91,11 @@ class UserViewSet(viewsets.GenericViewSet):
         if serializer.is_valid():
             # serializer.validate уже формирует dict с токенами
             tokens = TokenPairSerializer(serializer.validated_data).data
+            email = request.data.get('email', 'unknown')
+            logger.info(f"User logged in successfully: {email}")
             return Response(tokens, status=status.HTTP_200_OK)
+        email = request.data.get('email', 'unknown')
+        logger.warning(f"Failed login attempt for email: {email}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @extend_schema(summary="Текущий пользователь", responses=UserSerializer)
@@ -104,7 +116,10 @@ class UserViewSet(viewsets.GenericViewSet):
     @extend_schema(summary="Удалить аккаунт", responses={204: OpenApiResponse(description="Аккаунт удален")})
     @action(detail=False, methods=["delete"], permission_classes=[IsAuthenticated])
     def delete_me(self, request):
+        user_email = request.user.email
+        user_id = request.user.id
         request.user.delete()
+        logger.info(f"User account deleted: {user_email} (ID: {user_id})")
         return Response({"message": "Аккаунт удален"}, status=status.HTTP_204_NO_CONTENT)
 
     @extend_schema(
@@ -123,8 +138,10 @@ class UserViewSet(viewsets.GenericViewSet):
             user.reset_token_expires_at = timezone.now() + timedelta(hours=1)
             user.save()
             send_reset_password_email(user.email, user.reset_token)
+            logger.info(f"Password reset requested for user: {email} (ID: {user.id})")
             return Response({"message": "На почту отправлено письмо с инструкцией по сбросу пароля."})
         except User.DoesNotExist:
+            logger.warning(f"Password reset requested for non-existent email: {email}")
             return Response({"error": "Пользователь с таким email не найден."}, status=status.HTTP_404_NOT_FOUND)
 
     @extend_schema(
@@ -138,10 +155,12 @@ class UserViewSet(viewsets.GenericViewSet):
         try:
             user = User.objects.get(reset_token=token)
         except User.DoesNotExist:
+            logger.warning(f"Invalid reset token attempted: {token}")
             return Response({"error": "Неверный или устаревший токен."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Проверяем истечение токена
         if user.reset_token_expires_at and timezone.now() > user.reset_token_expires_at:
+            logger.warning(f"Expired reset token used for user: {user.email}")
             return Response({"error": "Токен истек. Пожалуйста, запросите сброс пароля снова."},
                           status=status.HTTP_400_BAD_REQUEST)
 
@@ -151,6 +170,7 @@ class UserViewSet(viewsets.GenericViewSet):
             user.reset_token = None
             user.reset_token_expires_at = None
             user.save()
+            logger.info(f"Password reset successfully for user: {user.email} (ID: {user.id})")
             return Response({"message": "Пароль успешно изменен."})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
