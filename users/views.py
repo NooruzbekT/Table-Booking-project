@@ -39,7 +39,7 @@ class UserViewSet(viewsets.GenericViewSet):
         request=UserRegistrationSerializer,
         responses={201: MessageSerializer}
     )
-    @action(detail=False, methods=["post"], permission_classes=[AllowAny], throttle_classes=[RegisterRateThrottle])
+    @action(detail=False, methods=["post"], permission_classes=[AllowAny])
     def register(self, request):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
