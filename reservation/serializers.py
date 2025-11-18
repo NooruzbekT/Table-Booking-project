@@ -1,11 +1,15 @@
 from datetime import datetime, timedelta
 from django.utils import timezone
+from django.db import transaction
 from rest_framework import serializers
 from .models import Reservation
 
 
-def check_time_overlap(table, date, time, duration, exclude_reservation=None):
-    """ Проверяет, есть ли пересечение по времени для указанного столика. """
+def check_time_overlap(table, date, time, duration, exclude_reservation=None, use_lock=False):
+    """
+    Проверяет, есть ли пересечение по времени для указанного столика.
+    use_lock=True блокирует строки для предотвращения race condition.
+    """
     start_datetime = datetime.combine(date, time)
     end_datetime = start_datetime + timedelta(minutes=duration)
 
@@ -17,6 +21,10 @@ def check_time_overlap(table, date, time, duration, exclude_reservation=None):
 
     if exclude_reservation:
         overlapping_reservations = overlapping_reservations.exclude(id=exclude_reservation.id)
+
+    # Блокируем строки для предотвращения race condition
+    if use_lock:
+        overlapping_reservations = overlapping_reservations.select_for_update()
 
     for reservation in overlapping_reservations:
         existing_start = datetime.combine(reservation.date, reservation.time)
@@ -59,10 +67,24 @@ class ReservationCreateSerializer(serializers.ModelSerializer):
 
         return data
 
+    @transaction.atomic
     def create(self, validated_data):
-        """ Создание бронирования с привязкой к пользователю. """
+        """
+        Создание бронирования с привязкой к пользователю.
+        Использует атомарную транзакцию и блокировку строк для защиты от race condition.
+        """
         request = self.context.get("request")
         validated_data["user"] = request.user
+
+        # Повторная проверка с блокировкой внутри транзакции
+        check_time_overlap(
+            validated_data["table"],
+            validated_data["date"],
+            validated_data["time"],
+            validated_data["duration"],
+            use_lock=True
+        )
+
         return super().create(validated_data)
 
 
@@ -94,11 +116,29 @@ class ReservationUpdateSerializer(serializers.ModelSerializer):
 
         return data
 
+    @transaction.atomic
     def update(self, instance, validated_data):
-        """ Обновление бронирования. """
-        instance.date = validated_data.get("date", instance.date)
-        instance.time = validated_data.get("time", instance.time)
-        instance.duration = validated_data.get("duration", instance.duration)
+        """
+        Обновление бронирования.
+        Использует атомарную транзакцию и блокировку строк для защиты от race condition.
+        """
+        # Повторная проверка с блокировкой внутри транзакции
+        new_date = validated_data.get("date", instance.date)
+        new_time = validated_data.get("time", instance.time)
+        new_duration = validated_data.get("duration", instance.duration)
+
+        check_time_overlap(
+            instance.table,
+            new_date,
+            new_time,
+            new_duration,
+            exclude_reservation=instance,
+            use_lock=True
+        )
+
+        instance.date = new_date
+        instance.time = new_time
+        instance.duration = new_duration
         instance.save()
         return instance
 
