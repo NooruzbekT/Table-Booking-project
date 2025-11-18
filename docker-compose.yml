@@ -43,7 +43,7 @@ services:
       context: .
       dockerfile: Dockerfile.celery
     container_name: table_booking_celery_beat
-    command: celery -A reservation_System beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    command: celery -A reservation_System beat -l info
     volumes:
       - .:/app
     environment:
@@ -64,7 +64,7 @@ services:
       context: .
       dockerfile: Dockerfile.celery
     container_name: table_booking_flower
-    command: celery -A reservation_System flower --port=5555
+    command: celery --broker=redis://redis:6379/0 flower --port=5555
     volumes:
       - .:/app
     environment:
