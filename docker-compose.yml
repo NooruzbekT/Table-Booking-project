@@ -28,6 +28,7 @@ services:
       - .:/app
     environment:
       - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
       - POSTGRES_HOST=host.docker.internal  # Подключение к PostgreSQL на host машине
     env_file:
       - .env
@@ -48,6 +49,7 @@ services:
       - .:/app
     environment:
       - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
       - POSTGRES_HOST=host.docker.internal
     env_file:
       - .env
@@ -64,11 +66,13 @@ services:
       context: .
       dockerfile: Dockerfile.celery
     container_name: table_booking_flower
-    command: celery --broker=redis://redis:6379/0 flower --port=5555
+    # ВАЖНО: используем отдельный бинарник flower, а не "celery flower"
+    command: flower --broker=redis://redis:6379/0 --port=5555
     volumes:
       - .:/app
     environment:
       - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
       - POSTGRES_HOST=host.docker.internal
     env_file:
       - .env

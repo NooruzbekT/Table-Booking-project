@@ -39,9 +39,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -157,8 +157,6 @@ EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS')
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-print("EMAIL_HOST_USER =", EMAIL_HOST_USER)
-print("EMAIL_HOST_PASSWORD =", EMAIL_HOST_PASSWORD)
 from datetime import timedelta
 
 SIMPLE_JWT = {
@@ -215,10 +213,12 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8080",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:8080",
+    "http://127.0.0.1:5173",
+    "http://localhost:5173",
 ]
 
 # В разработке можно разрешить все (для production использовать CORS_ALLOWED_ORIGINS)
-# CORS_ALLOW_ALL_ORIGINS = True  # Осторожно! Только для разработки
+CORS_ALLOW_ALL_ORIGINS = True  # Осторожно! Только для разработки
 
 CORS_ALLOW_CREDENTIALS = True
 

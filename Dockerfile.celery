@@ -1,24 +1,32 @@
-FROM python:3.13-slim
+FROM python:3.12-slim
 
-# Устанавливаем рабочую директорию
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100
+
 WORKDIR /app
 
-# Устанавливаем системные зависимости
-RUN apt-get update && apt-get install -y \
-    gcc \
-    postgresql-client \
+# Системные зависимости (на случай psycopg2 и т.п.)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Копируем requirements.txt и устанавливаем Python зависимости
+# Ставим зависимости
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем весь проект
+# Чистим любые старые redis/redis-py-cluster и ставим нормальные версии из requirements.txt
+RUN pip uninstall -y redis redis-py-cluster || true \
+ && pip install --upgrade pip \
+ && pip install --no-cache-dir -r requirements.txt
+
+# Копируем код проекта
 COPY . .
 
-# Создаем непривилегированного пользователя
-RUN useradd -m -u 1000 celeryuser && chown -R celeryuser:celeryuser /app
-USER celeryuser
+# На всякий случай укажем настройки Django (если Celery их использует)
+ENV DJANGO_SETTINGS_MODULE=reservation_System.settings
 
-# Команда по умолчанию (будет переопределена в docker-compose.yml)
+# Команда по умолчанию (в docker-compose она переопределяется)
 CMD ["celery", "-A", "reservation_System", "worker", "-l", "info"]
